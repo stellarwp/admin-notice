@@ -160,6 +160,20 @@ class AdminNotice
     }
 
     /**
+     * Queue this admin notice to be displayed on "admin_notices".
+     *
+     * @param int $priority Optional. The priority to use with add_action(). Default is 10.
+     *
+     * @return $this
+     */
+    public function queue($priority = 10)
+    {
+        add_action('admin_notices', [$this, 'display'], $priority);
+
+        return $this;
+    }
+
+    /**
      * Render the admin notice.
      *
      * @return string The admin notice markup.

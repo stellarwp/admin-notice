@@ -94,6 +94,33 @@ class AdminNoticeTest extends WP_UnitTestCase
 
     /**
      * @test
+     * @testdox queue() should attach this notice to the "admin_notices" hook
+     */
+    public function queue_should_attach_this_notice_to_the_admin_notices_hook()
+    {
+        $notice = (new AdminNotice('Some message'))
+            ->queue();
+
+        $this->assertIsNumeric(has_action('admin_notices', [$notice, 'display']));
+
+        $this->expectOutputString($notice->render());
+        do_action('admin_notices');
+    }
+
+    /**
+     * @test
+     * @testdox queue() should attach this notice to the "admin_notices" hook
+     */
+    public function queue_should_be_able_to_accept_an_alternate_priority()
+    {
+        $notice = (new AdminNotice('Some message'))
+            ->queue(9999);
+
+        $this->assertSame(9999, has_action('admin_notices', [$notice, 'display']));
+    }
+
+    /**
+     * @test
      */
     public function render_should_return_the_markup_of_the_notice()
     {
