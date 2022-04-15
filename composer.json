@@ -13,12 +13,6 @@
         "issues": "https://github.com/stellarwp/admin-notice/issues",
         "source": "https://github.com/stellarwp/admin-notice"
     },
-    "repositories": [
-        {
-            "type": "vcs",
-            "url": "git@github.com:stellarwp/coding-standards.git"
-        }
-    ],
     "autoload": {
         "psr-4": {
             "StellarWP\\AdminNotice\\": "src/"
