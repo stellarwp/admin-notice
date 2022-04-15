@@ -303,4 +303,22 @@ class AdminNotice
 
         return in_array($type, $valid, true) ? $type : self::TYPE_INFO;
     }
+
+    /**
+     * Construct a new AdminNotice.
+     *
+     * @param string       $message        The body of the message. This may contain HTML, but plain
+     *                                     text will automatically be wrapped in paragraph tags.
+     * @param self::TYPE_* $type           Optional. The type of notice, one of "success", "error",
+     *                                     "warning", or "info". Default is "info".
+     * @param string       $id             Optional. An ID for this notification. Used to track
+     *                                     dismissed notices. Default is empty.
+     *
+     * @return self
+     */
+    public static function factory($message, $type = self::TYPE_INFO, $id = '')
+    {
+        // @phpstan-ignore-next-line As we're explicitly forwarding all method parameters.
+        return new static(...func_get_args());
+    }
 }

@@ -167,4 +167,16 @@ class AdminNoticeTest extends WP_UnitTestCase
 
         $this->assertContainsSelector('.notice.inline', $notice->render());
     }
+
+    /**
+     * @test
+     */
+    public function the_factory_method_should_return_a_new_instance_with_the_passed_args()
+    {
+        $notice = AdminNotice::factory('Some message', AdminNotice::TYPE_WARNING, 'some-id');
+
+        $this->assertSame('Some message', $notice->message);
+        $this->assertSame(AdminNotice::TYPE_WARNING, $notice->type);
+        $this->assertSame('some-id', $notice->id);
+    }
 }
