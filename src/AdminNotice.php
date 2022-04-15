@@ -100,7 +100,7 @@ class AdminNotice
     {
         $this->message = $message;
         $this->type    = $this->validateType($type);
-        $this->id      = $id ?: $type . ':' . substr(md5($message), 0, 10);
+        $this->id      = $id ?: $type . ':' . mb_substr(md5($message), 0, 10);
     }
 
     /**
@@ -129,7 +129,7 @@ class AdminNotice
      * @throws ImmutableValueException Prevent propeties from being written and direct developers to
      *                                 the assorted set*() methods.
      *
-     * @return never
+     * @return void
      */
     public function __set($prop, $value)
     {
@@ -166,6 +166,10 @@ class AdminNotice
      */
     public function render()
     {
+        if ($this->capability && ! current_user_can($this->capability)) {
+            return '';
+        }
+
         // Assemble a list of classes.
         $classes = [
             'notice',
