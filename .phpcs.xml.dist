@@ -1,0 +1,28 @@
+<?xml version="1.0"?>
+<ruleset name="Coding standards for stellarwp/admin-notice">
+    <!--
+        Usage instructions: https://github.com/squizlabs/PHP_CodeSniffer/wiki/Usage
+        Annotated ruleset: https://github.com/squizlabs/PHP_CodeSniffer/wiki/Annotated-ruleset.xml
+    -->
+
+    <!-- What to scan: -->
+    <file>./src</file>
+    <file>./tests</file>
+
+    <!-- What to ignore: -->
+    <exclude-pattern>./tests/coverage</exclude-pattern>
+
+    <!-- Show progresss & use colors. -->
+    <arg value="sp"/>
+    <arg name="colors"/>
+
+    <!-- Enables parallel processing when available for faster results. -->
+    <arg name="parallel" value="8"/>
+
+    <!-- Strip the file paths down to the relevant bit and only apply to .php files. -->
+    <arg name="basepath" value="./"/>
+    <arg name="extensions" value="php"/>
+
+    <!-- Include the StellarWP standards. -->
+    <rule ref="StellarWP" />
+</ruleset>

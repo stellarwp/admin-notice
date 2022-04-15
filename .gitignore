@@ -1,0 +1,25 @@
+# External dependencies.
+/vendor/
+composer.lock
+
+# Artifacts.
+/tests/coverage
+
+# Local overrides.
+.php-cs-fixer.php
+phpcs.xml
+phpunit.xml
+
+# Cache files.
+.php_cs.cache
+.php-cs-fixer.cache
+.phpunit.result.cache
+
+# Archives and dumps.
+*.sql
+*.tar.gz
+*.zip
+
+# System files.
+.DS_Store
+Thumbs.db
