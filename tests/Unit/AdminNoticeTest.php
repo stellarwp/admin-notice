@@ -21,23 +21,11 @@ class AdminNoticeTest extends WP_UnitTestCase
      */
     public function it_should_expose_protected_properties_via_magic_getter()
     {
-        $notice = new AdminNotice('Some message', AdminNotice::TYPE_SUCCESS, 'some-id');
+        $notice = new AdminNotice('Some message', AdminNotice::TYPE_SUCCESS);
 
         $this->assertSame('Some message', $notice->message);
         $this->assertSame(AdminNotice::TYPE_SUCCESS, $notice->type);
-        $this->assertSame('some-id', $notice->id);
-        $this->assertTrue($notice->dismissible);
-    }
-
-    /**
-     * @test
-     * @depends it_should_expose_protected_properties_via_magic_getter
-     */
-    public function it_should_generate_an_ID_if_one_is_not_provided()
-    {
-        $notice = new AdminNotice('Some message', AdminNotice::TYPE_INFO, '');
-
-        $this->assertNotEmpty($notice->id, 'An ID should have been generated for this notice.');
+        $this->assertFalse($notice->dismissible);
     }
 
     /**
@@ -49,13 +37,11 @@ class AdminNoticeTest extends WP_UnitTestCase
         $notice = (new AdminNotice('Some message'))
             ->setAlt(true)
             ->setDismissible(true)
-            ->setId('some-id')
             ->setInline(true)
             ->setType(AdminNotice::TYPE_SUCCESS);
 
         $this->assertTrue($notice->alt);
         $this->assertTrue($notice->dismissible);
-        $this->assertSame('some-id', $notice->id);
         $this->assertTrue($notice->inline);
         $this->assertSame(AdminNotice::TYPE_SUCCESS, $notice->type);
     }
@@ -146,21 +132,6 @@ class AdminNoticeTest extends WP_UnitTestCase
 
     /**
      * @test
-     */
-    public function render_should_include_data_attributes_for_dismissal()
-    {
-        $this->markTestIncomplete();
-
-        $notice = new AdminNotice('Some message');
-
-        $this->assertHasElementWithAttributes([
-            'data-id'    => $notice->id,
-            'data-nonce' => wp_create_nonce(AdminNotice::NONCE_DISMISS_NOTICE)
-        ], $notice->render());
-    }
-
-    /**
-     * @test
      * @testdox render() should apply the .notice-alt class if $alt is true
      */
     public function render_should_apply_the_notice_alt_class_if_alt_is_true()
@@ -177,10 +148,35 @@ class AdminNoticeTest extends WP_UnitTestCase
      */
     public function render_should_apply_the_is_dismissible_class_if_dismissible_is_true()
     {
-        $notice = (new AdminNotice('Some message'))
-            ->setDismissible(true);
+        $markup = (new AdminNotice('Some message'))
+            ->setDismissible(true)
+            ->render();
 
-        $this->assertContainsSelector('.notice.is-dismissible', $notice->render());
+        $this->assertContainsSelector('.notice.is-dismissible', $markup);
+        $this->assertStringNotContainsString(
+            'data-id="',
+            $markup,
+            'If no ID was provided, one should not be written to the DOM.'
+        );
+        $this->assertStringNotContainsString(
+            'data-nonce="',
+            $markup,
+            'No ID means no saving, so no nonce is necessary.'
+        );
+    }
+
+    /**
+     * @test
+     */
+    public function render_should_include_data_attributes_for_dismissal_if_an_ID_was_provided()
+    {
+        $notice = (new AdminNotice('Some message'))
+            ->setDismissible(true, 'some-id');
+
+        $this->assertHasElementWithAttributes([
+            'data-id'    => 'some-id',
+            'data-nonce' => wp_create_nonce(AdminNotice::NONCE_DISMISS_NOTICE)
+        ], $notice->render());
     }
 
     /**
@@ -198,12 +194,55 @@ class AdminNoticeTest extends WP_UnitTestCase
     /**
      * @test
      */
+    public function setDismissible_should_not_set_a_dismissibleKey_by_default()
+    {
+        $notice = (new AdminNotice('Some message'))
+            ->setDismissible(true);
+
+        $this->assertEmpty($notice->dismissibleKey);
+    }
+
+    /**
+     * @test
+     */
+    public function setDismissible_should_save_a_dismissibleKey_if_provided()
+    {
+        $notice = (new AdminNotice('Some message'))
+            ->setDismissible(true, 'some-id');
+
+        $this->assertSame('some-id', $notice->dismissibleKey);
+    }
+
+    /**
+     * @test
+     */
+    public function setDismissible_should_generate_a_dismissibleKey_if_given_true()
+    {
+        $notice = (new AdminNotice('Some message'))
+            ->setDismissible(true, true);
+
+        $this->assertNotEmpty($notice->dismissibleKey);
+    }
+
+    /**
+     * @test
+     */
+    public function setDismissible_should_generate_a_dismissibleKey_if_given_false()
+    {
+        $notice = (new AdminNotice('Some message'))
+            ->setDismissible(true, false);
+
+        $this->assertEmpty($notice->dismissibleKey);
+    }
+
+    /**
+     * @test
+     */
     public function the_factory_method_should_return_a_new_instance_with_the_passed_args()
     {
-        $notice = AdminNotice::factory('Some message', AdminNotice::TYPE_WARNING, 'some-id');
+        $notice = AdminNotice::factory('Some message', AdminNotice::TYPE_WARNING);
 
         $this->assertSame('Some message', $notice->message);
         $this->assertSame(AdminNotice::TYPE_WARNING, $notice->type);
-        $this->assertSame('some-id', $notice->id);
     }
 }

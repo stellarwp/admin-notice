@@ -9,6 +9,14 @@ use StellarWP\AdminNotice\Exceptions\ImmutableValueException;
  * the "admin_notices" action.
  *
  * @link https://developer.wordpress.org/reference/hooks/admin_notices/
+ *
+ * @property-read bool    $alt            Whether or not this notice should use alternate coloring.
+ * @property-read ?string $capability     A capability that the current user must possess in order to see this notice.
+ * @property-read bool    $dismissible    Whether or not this notice should be dismissible by the user.
+ * @property-read ?string $dismissibleKey A unique key for this notice, for the sake of tracking dismissals.
+ * @property-read bool    $inline         Whether or not this notice should be rendered inline.
+ * @property-read string  $message        The body of the admin notice.
+ * @property-read string  $type           The type of notice, one of "success", "error", "warning", or "info".
  */
 class AdminNotice
 {
@@ -31,14 +39,14 @@ class AdminNotice
      *
      * @var bool
      */
-    protected $dismissible = true;
+    protected $dismissible = false;
 
     /**
-     * A unique ID for this notice.
+     * A unique key for this notice, for the sake of tracking dismissals.
      *
-     * @var string
+     * @var ?string
      */
-    protected $id;
+    protected $dismissibleKey;
 
     /**
      * Whether or not this notice should be rendered inline.
@@ -89,18 +97,15 @@ class AdminNotice
     /**
      * Construct a new AdminNotice.
      *
-     * @param string       $message        The body of the message. This may contain HTML, but plain
-     *                                     text will automatically be wrapped in paragraph tags.
-     * @param self::TYPE_* $type           Optional. The type of notice, one of "success", "error",
-     *                                     "warning", or "info". Default is "info".
-     * @param string       $id             Optional. An ID for this notification. Used to track
-     *                                     dismissed notices. Default is empty.
+     * @param string       $message The body of the message. This may contain HTML, but plain text will
+     *                              automatically be wrapped in paragraph tags.
+     * @param self::TYPE_* $type    Optional. The type of notice, one of "success", "error", "warning",
+     *                              or "info". Default is "info".
      */
-    public function __construct($message, $type = self::TYPE_INFO, $id = '')
+    public function __construct($message, $type = self::TYPE_INFO)
     {
         $this->message = $message;
         $this->type    = $this->validateType($type);
-        $this->id      = $id ?: $type . ':' . mb_substr(md5($message), 0, 10);
     }
 
     /**
@@ -185,7 +190,8 @@ class AdminNotice
         }
 
         // Assemble a list of classes.
-        $classes = [
+        $dataAttributes = '';
+        $classes        = [
             'notice',
             "notice-{$this->type}",
             'stellarwp-admin-notice',
@@ -201,13 +207,20 @@ class AdminNotice
 
         if ($this->dismissible) {
             $classes[] = 'is-dismissible';
+
+            if ($this->dismissibleKey) {
+                $dataAttributes = sprintf(
+                    ' data-id="%1$s" data-nonce="%2$s"',
+                    $this->dismissibleKey,
+                    wp_create_nonce(static::NONCE_DISMISS_NOTICE),
+                );
+            }
         }
 
         return sprintf(
-            '<div class="%1$s" data-id="%2$s" data-nonce="%3$s">%4$s</div>',
+            '<div class="%1$s"%2$s>%3$s</div>',
             esc_attr(implode(' ', $classes)),
-            $this->id,
-            wp_create_nonce(static::NONCE_DISMISS_NOTICE),
+            $dataAttributes,
             wpautop($this->message)
         );
     }
@@ -244,13 +257,24 @@ class AdminNotice
     /**
      * Set whether or not this notice should be dismissible by the user.
      *
-     * @param bool $dismissible True if dismissible, false otherwise.
+     * @param bool    $dismissible True if dismissible, false otherwise.
+     * @param ?scalar $key         Optional. If present, WordPress will attempt to remember when this
+     *                             notice was dismissed. Meanwhile, if given a boolean true, a key
+     *                             will automatically be generated for this notice.
      *
      * @return $this
      */
-    public function setDismissible($dismissible)
+    public function setDismissible($dismissible, $key = null)
     {
         $this->dismissible = (bool) $dismissible;
+
+        if (is_scalar($key) && $key) {
+            if (true === $key) {
+                $key = $this->type . ':' . mb_substr(md5($this->message), 0, 10);
+            }
+
+            $this->dismissibleKey = (string) $key;
+        }
 
         return $this;
     }
@@ -321,16 +345,14 @@ class AdminNotice
     /**
      * Construct a new AdminNotice.
      *
-     * @param string       $message        The body of the message. This may contain HTML, but plain
-     *                                     text will automatically be wrapped in paragraph tags.
-     * @param self::TYPE_* $type           Optional. The type of notice, one of "success", "error",
-     *                                     "warning", or "info". Default is "info".
-     * @param string       $id             Optional. An ID for this notification. Used to track
-     *                                     dismissed notices. Default is empty.
+     * @param string       $message The body of the message. This may contain HTML, but plain text will
+     *                              automatically be wrapped in paragraph tags.
+     * @param self::TYPE_* $type    Optional. The type of notice, one of "success", "error", "warning",
+     *                              or "info". Default is "info".
      *
      * @return self
      */
-    public static function factory($message, $type = self::TYPE_INFO, $id = '')
+    public static function factory($message, $type = self::TYPE_INFO)
     {
         // @phpstan-ignore-next-line As we're explicitly forwarding all method parameters.
         return new static(...func_get_args());
