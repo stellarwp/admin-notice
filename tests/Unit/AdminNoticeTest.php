@@ -70,6 +70,119 @@ class AdminNoticeTest extends WP_UnitTestCase
     /**
      * @test
      */
+    public function dismissedByUserAt_should_return_a_DateTime_representing_when_the_notice_was_dismissed()
+    {
+        $now    = time();
+        $userId = $this->factory->user->create();
+
+        update_user_meta($userId, AdminNotice::USER_META_KEY, [
+            'some-key' => $now,
+        ]);
+
+        $dismissedAt = AdminNotice::factory('Some message')
+            ->setDismissible(true, 'some-key')
+            ->dismissedByUserAt($userId);
+
+        $this->assertInstanceOf(\DateTimeImmutable::class, $dismissedAt);
+        $this->assertSame($now, (int) $dismissedAt->format('U'));
+    }
+
+    /**
+     * @test
+     */
+    public function dismissedByUserAt_should_return_null_if_there_is_no_record_of_the_notice_being_dismissed()
+    {
+        $userId = $this->factory->user->create();
+
+        update_user_meta($userId, AdminNotice::USER_META_KEY, [
+            'some-other-key' => time(),
+        ]);
+
+        $this->assertNull(AdminNotice::factory('Some message')
+            ->setDismissible(true, 'some-key')
+            ->dismissedByUserAt($userId));
+    }
+
+    /**
+     * @test
+     */
+    public function dismissForUser_should_track_dismissed_notices_for_the_given_user_ID()
+    {
+        $now    = time();
+        $userId = $this->factory->user->create();
+
+        $notice = AdminNotice::factory('Some message')
+            ->setDismissible(true, 'some-key')
+            ->dismissForUser($userId);
+
+        $this->assertGreaterThanOrEqual($now, $notice->dismissedByUserAt($userId)->format('U'));
+    }
+
+    /**
+     * @test
+     */
+    public function dismissForUser_should_default_to_the_current_user_ID()
+    {
+        $now    = time();
+        $userId = $this->factory->user->create();
+        wp_set_current_user($userId);
+
+        $notice = AdminNotice::factory('Some message')
+            ->setDismissible(true, 'some-key')
+            ->dismissForUser();
+
+        $this->assertGreaterThanOrEqual($now, $notice->dismissedByUserAt($userId)->format('U'));
+    }
+
+    /**
+     * @test
+     */
+    public function dismissForUser_should_not_track_dismissed_notices_if_not_dismissible()
+    {
+        $userId = $this->factory->user->create();
+
+        $notice = AdminNotice::factory('Some message')
+            ->setDismissible(false)
+            ->dismissForUser($userId);
+
+        $this->assertNull($notice->dismissedByUserAt($userId));
+    }
+
+    /**
+     * @test
+     */
+    public function dismissForUser_should_not_track_dismissed_notices_without_an_ID()
+    {
+        $userId = $this->factory->user->create();
+
+        $notice = AdminNotice::factory('Some message')
+            ->setDismissible(true, null)
+            ->dismissForUser($userId);
+
+        $this->assertNull($notice->dismissedByUserAt($userId));
+    }
+
+    /**
+     * @test
+     */
+    public function dismissForUser_should_update_dismissal_timestamps_if_called_multiple_times()
+    {
+        $now    = time();
+        $userId = $this->factory->user->create();
+        update_user_meta($userId, AdminNotice::USER_META_KEY, [
+            'some-key' => $now - HOUR_IN_SECONDS,
+        ]);
+
+        $notice = AdminNotice::factory('Some message')
+            ->setDismissible(true, 'some-key')
+            ->dismissForUser($userId);
+
+        $this->assertGreaterThanOrEqual($now, $notice->dismissedByUserAt($userId)->format('U'));
+    }
+
+    /**
+     * @test
+     */
     public function display_should_print_the_rendered_notice()
     {
         $notice = new AdminNotice('Some message');
@@ -175,7 +288,22 @@ class AdminNoticeTest extends WP_UnitTestCase
 
         $this->assertHasElementWithAttributes([
             'data-id'    => 'some-id',
-            'data-nonce' => wp_create_nonce(AdminNotice::NONCE_DISMISS_NOTICE)
+            'data-nonce' => wp_create_nonce(AdminNotice::NONCE_DISMISS_NOTICE),
+        ], $notice->render());
+    }
+
+    /**
+     * @test
+     */
+    public function render_should_include_not_include_data_attributes_if_dismissible_is_false()
+    {
+        $notice = (new AdminNotice('Some message'))
+            ->setDismissible(true, 'some-id')
+            ->setDismissible(false);
+
+        $this->assertNotHasElementWithAttributes([
+            'data-id'    => 'some-id',
+            'data-nonce' => wp_create_nonce(AdminNotice::NONCE_DISMISS_NOTICE),
         ], $notice->render());
     }
 

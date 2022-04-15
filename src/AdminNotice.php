@@ -95,6 +95,11 @@ class AdminNotice
     const TYPE_WARNING = 'warning';
 
     /**
+     * The user meta key that holds the IDs and Unix timestamps of dismissed notices.
+     */
+    const USER_META_KEY = '_stellarwp_dismissed_notices';
+
+    /**
      * Construct a new AdminNotice.
      *
      * @param string       $message The body of the message. This may contain HTML, but plain text will
@@ -155,6 +160,76 @@ class AdminNotice
     }
 
     /**
+     * Check to see if this notice has been dismissed by the given user.
+     *
+     * @param ?int $user Optional. The user ID. Default is null (the current user).
+     *
+     * @return bool True if the user has previously dismissed this notice, false otherwise.
+     */
+    public function dismissedByUser($user = null)
+    {
+        return $this->dismissedByUserAt($user) instanceof \DateTimeImmutable;
+    }
+
+    /**
+     * Retrieve the timestamp representing when the given user last dismissed this notice.
+     *
+     * @param ?int $user Optional. The user ID. Default is null (the current user).
+     *
+     * @return ?\DateTimeImmutable A DateTime object representing when the notice was dismissed,
+     *                             or NULL if the user has not dismissed this notice.
+     */
+    public function dismissedByUserAt($user = null)
+    {
+        if (! $this->dismissibleKey) {
+            return null;
+        }
+
+        if (null === $user) {
+            $user = get_current_user_id();
+        }
+
+        $current = get_user_meta($user, self::USER_META_KEY, true);
+
+        if (! is_array($current) || ! isset($current[$this->dismissibleKey])) {
+            return null;
+        }
+
+        /** @var Array<string,int> $current */
+        return \DateTimeImmutable::createFromFormat('U', (string) $current[$this->dismissibleKey]) ?: null;
+    }
+
+    /**
+     * Mark a dismissible notice as dismissed by the given user.
+     *
+     * @param ?int $user Optional. The user ID. Default is null (the current user).
+     *
+     * @return $this
+     */
+    public function dismissForUser($user = null)
+    {
+        if (! $this->dismissible || ! $this->dismissibleKey) {
+            return $this;
+        }
+
+        if (null === $user) {
+            $user = get_current_user_id();
+        }
+
+        $current = get_user_meta($user, self::USER_META_KEY, true);
+
+        if (! is_array($current)) {
+            $current = [];
+        }
+
+        update_user_meta($user, self::USER_META_KEY, array_merge($current, [
+            $this->dismissibleKey => time(),
+        ]));
+
+        return $this;
+    }
+
+    /**
      * Render and print the admin notice.
      *
      * @return void
@@ -185,7 +260,13 @@ class AdminNotice
      */
     public function render()
     {
+        // Check user capabilities, if one has been set.
         if ($this->capability && ! current_user_can($this->capability)) {
+            return '';
+        }
+
+        // Determine if this user has already dismissed this notice.
+        if ($this->dismissible && $this->dismissedByUser()) {
             return '';
         }
 
@@ -275,20 +356,6 @@ class AdminNotice
 
             $this->dismissibleKey = (string) $key;
         }
-
-        return $this;
-    }
-
-    /**
-     * Set the ID for the admin notice.
-     *
-     * @param string $id The notice ID.
-     *
-     * @return $this
-     */
-    public function setId($id)
-    {
-        $this->id = $id;
 
         return $this;
     }
