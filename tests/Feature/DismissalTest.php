@@ -18,7 +18,7 @@ class DismissalTest extends WP_Ajax_UnitTestCase
     {
         parent::set_up();
 
-        $_REQUEST = [];
+        $_POST = [];
 
         wp_set_current_user($this->factory->user->create());
     }
@@ -67,21 +67,26 @@ class DismissalTest extends WP_Ajax_UnitTestCase
     /**
      * Make an Ajax request.
      *
-     * @param Array<string,mixed> $request The contents to include in the $_REQUEST superglobal.
+     * @param Array<string,mixed> $post The contents to include in the $_POST superglobal.
      *
      * @return {success: bool, data: mixed} The JSON-decoded response.
      */
-    protected function sendAjaxRequest($request = [])
+    protected function sendAjaxRequest($post = [])
     {
+        // Prevent deprecation warnings from breaking the JSON.
+        $level = error_reporting(E_ERROR);
+
         try {
-            $_REQUEST = array_merge($_REQUEST, $request);
+            $_POST = array_merge($_POST, $post);
 
             DismissalHandler::listen();
             $this->_handleAjax(AdminNotice::ACTION_DISMISSAL);
         } catch (WPAjaxDieContinueException $e) {
+            error_reporting($level);
             return json_decode($this->_last_response, false);
         }
 
+        error_reporting($level);
         $this->fail('Did not catch the expected WPAjaxDieContinueException.');
     }
 }

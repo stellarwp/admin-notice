@@ -45,13 +45,11 @@ class AdminNoticeTest extends WP_UnitTestCase
         $notice = (new AdminNotice('Some message'))
             ->setAlt(true)
             ->setDismissible(true)
-            ->setInline(true)
-            ->setType(AdminNotice::TYPE_SUCCESS);
+            ->setInline(true);
 
         $this->assertTrue($notice->alt);
         $this->assertTrue($notice->dismissible);
         $this->assertTrue($notice->inline);
-        $this->assertSame(AdminNotice::TYPE_SUCCESS, $notice->type);
     }
 
     /**

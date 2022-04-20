@@ -187,7 +187,7 @@ class AdminNotice
     }
 
     /**
-     * Retrieve the timestamp representing when the given user last dismissed this notice.
+     * Retrieve a DateTime object representing when the given user last dismissed this notice.
      *
      * @param ?int $user Optional. The user ID. Default is null (the current user).
      *
@@ -296,7 +296,7 @@ class AdminNotice
                 $dataAttributes = sprintf(
                     ' data-id="%1$s" data-nonce="%2$s"',
                     $this->dismissibleKey,
-                    wp_create_nonce(static::NONCE_DISMISS_NOTICE),
+                    wp_create_nonce(static::NONCE_DISMISS_NOTICE)
                 );
 
                 static::enqueueScript();
@@ -377,20 +377,6 @@ class AdminNotice
     public function setInline($inline)
     {
         $this->inline = (bool) $inline;
-
-        return $this;
-    }
-
-    /**
-     * Set type type of admin notice.
-     *
-     * @param self::TYPE_* $type The type, one of "success", "error", "warning", or "info".
-     *
-     * @return $this
-     */
-    public function setType($type)
-    {
-        $this->type = $this->validateType($type);
 
         return $this;
     }
