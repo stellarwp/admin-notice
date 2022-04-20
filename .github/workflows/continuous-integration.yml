@@ -81,8 +81,13 @@ jobs:
 
       - uses: ramsey/composer-install@v2
 
+      - uses: bahmutov/npm-install@v1
+
       - name: Check coding standards
         run: composer test:standards
+
+      - name: Check JS coding standards
+        run: npm test
 
   # Static Code Analysis (PHPStan)
   static-code-analysis:

@@ -1,0 +1,23 @@
+{
+    "private": true,
+    "main": "assets/admin-notice.js",
+    "devDependencies": {
+        "@wordpress/eslint-plugin": "^11.1.0",
+        "eslint": "^8.12.0",
+        "eslint-plugin-prettier": "^4.0.0",
+        "prettier": "^2.6.1"
+    },
+    "scripts": {
+        "test": "eslint --ext .js assets"
+    },
+    "eslintConfig": {
+        "root": true,
+        "env": {
+            "browser": true
+        },
+        "extends": [
+            "eslint:recommended",
+            "plugin:@wordpress/eslint-plugin/recommended"
+        ]
+    }
+}

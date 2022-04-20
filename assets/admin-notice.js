@@ -1,8 +1,6 @@
 /**
  * Listen for admin notices to be dismissed: if both "id" and "nonce" data-attributes are present,
  * trigger a WP-Ajax request to track the dismissal for the current user.
- *
- * @package StellarWP\AdminNotice
  */
 
 /* global ajaxurl:readonly */
