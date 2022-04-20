@@ -25,4 +25,9 @@
 
     <!-- Include the StellarWP standards. -->
     <rule ref="StellarWP" />
+
+	<!-- We don't need to worry about nonces in tests. -->
+	<rule ref="WordPress.Security.NonceVerification">
+		<exclude-pattern>tests/*</exclude-pattern>
+	</rule>
 </ruleset>

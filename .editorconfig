@@ -14,7 +14,7 @@ trim_trailing_whitespace = true
 [*.md]
 trim_trailing_whitespace = false
 
-[*.{neon,neon.dist,xml,xml.dist}]
+[*.{neon,neon.dist,js,xml,xml.dist}]
 indent_style = tab
 
 [*.{yml,yaml}]

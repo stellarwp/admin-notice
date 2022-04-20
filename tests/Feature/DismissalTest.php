@@ -3,66 +3,85 @@
 namespace Tests\Feature;
 
 use StellarWP\AdminNotice\AdminNotice;
-use WP_UnitTestCase;
+use StellarWP\AdminNotice\DismissalHandler;
+use WP_Ajax_UnitTestCase;
+use WPAjaxDieContinueException;
 
 /**
  * @testdox Dismissible notice behavior
  *
- * @covers StellarWP\AdminNotice\AdminNotice
+ * @covers StellarWP\AdminNotice\DismissalHandler
  */
-class DismissalTest extends WP_UnitTestCase
+class DismissalTest extends WP_Ajax_UnitTestCase
 {
-    /**
-     * The generated test user ID.
-     *
-     * @var int
-     */
-    protected $userId;
-
     public function set_up()
     {
         parent::set_up();
 
-        // Automatically set up a user and its context.
-        $this->userId = $this->factory->user->create();
-        wp_set_current_user($this->userId);
+        $_REQUEST = [];
+
+        wp_set_current_user($this->factory->user->create());
     }
 
     /**
      * @test
      */
-    public function it_should_render_a_notice_that_the_user_has_not_yet_dismissed()
+    public function the_dismissal_handler_should_track_dismissed_notices_for_the_user()
     {
-        $notice = AdminNotice::factory('Some message')
-            ->setDismissible(true, 'some-key');
+        $response = $this->sendAjaxRequest([
+            'notice'   => 'some-notice',
+            '_wpnonce' => wp_create_nonce(AdminNotice::NONCE_DISMISS_NOTICE),
+        ]);
 
-        $this->assertNotEmpty($notice->render());
+        $this->assertTrue($response->success, 'Expected a successful response.');
+
+        $notice = AdminNotice::factory('Some notice')
+            ->setDismissible(true, 'some-notice');
+
+        $this->assertTrue($notice->dismissedByUser(), 'Expected the notice to have been marked as dismissed.');
     }
 
     /**
      * @test
      */
-    public function it_should_not_render_a_notice_if_the_user_has_previously_dismissed_it()
+    public function the_dismissal_handler_should_do_nothing_if_required_fields_are_missing()
     {
-        $notice = AdminNotice::factory('Some message')
-            ->setDismissible(true, 'some-key')
-            ->dismissForUser($this->userId);
+        $response = $this->sendAjaxRequest([]);
 
-        $this->assertEmpty($notice->render());
+        $this->assertFalse($response->success, 'Did not expect a successful response.');
     }
 
     /**
      * @test
      */
-    public function notices_with_the_same_dismissibleKey_should_respect_dismissal_history()
+    public function the_dismissal_handler_should_do_nothing_if_nonce_validation_fails()
     {
-        AdminNotice::factory('Some message')
-            ->setDismissible(true, 'some-key')
-            ->dismissForUser($this->userId);
+        $response = $this->sendAjaxRequest([
+            'notice'   => 'some-notice',
+            '_wpnonce' => 'some-invalid-nonce',
+        ]);
 
-        $notice = AdminNotice::factory('Some message')
-            ->setDismissible(true, 'some-key');
+        $this->assertFalse($response->success, 'Did not expect a successful response.');
+    }
 
-        $this->assertEmpty($notice->render(), 'The previously-dismissed notice should not have been rendered.');
+    /**
+     * Make an Ajax request.
+     *
+     * @param Array<string,mixed> $request The contents to include in the $_REQUEST superglobal.
+     *
+     * @return {success: bool, data: mixed} The JSON-decoded response.
+     */
+    protected function sendAjaxRequest($request = [])
+    {
+        try {
+            $_REQUEST = array_merge($_REQUEST, $request);
+
+            DismissalHandler::listen();
+            $this->_handleAjax(AdminNotice::ACTION_DISMISSAL);
+        } catch (WPAjaxDieContinueException $e) {
+            return json_decode($this->_last_response, false);
+        }
+
+        $this->fail('Did not catch the expected WPAjaxDieContinueException.');
     }
 }

@@ -16,6 +16,14 @@ class AdminNoticeTest extends WP_UnitTestCase
 {
     use MarkupAssertionsTrait;
 
+    public function set_up()
+    {
+        parent::set_up();
+
+        remove_all_actions('admin_enqueue_scripts');
+        wp_dequeue_script(AdminNotice::SCRIPT_HANDLE);
+    }
+
     /**
      * @test
      */
@@ -281,6 +289,50 @@ class AdminNoticeTest extends WP_UnitTestCase
     /**
      * @test
      */
+    public function render_should_render_a_notice_that_the_user_has_not_yet_dismissed()
+    {
+        $notice = AdminNotice::factory('Some message')
+            ->setDismissible(true, 'some-key');
+
+        $this->assertNotEmpty($notice->render());
+    }
+
+    /**
+     * @test
+     */
+    public function render_should_not_render_a_notice_if_the_user_has_previously_dismissed_it()
+    {
+        $userId = $this->factory->user->create();
+        wp_set_current_user($userId);
+
+        $notice = AdminNotice::factory('Some message')
+            ->setDismissible(true, 'some-key')
+            ->dismissForUser($userId);
+
+        $this->assertEmpty($notice->render());
+    }
+
+    /**
+     * @test
+     */
+    public function notices_with_the_same_dismissibleKey_should_respect_dismissal_history()
+    {
+        $userId = $this->factory->user->create();
+        wp_set_current_user($userId);
+
+        AdminNotice::factory('Some message')
+            ->setDismissible(true, 'some-key')
+            ->dismissForUser($userId);
+
+        $notice = AdminNotice::factory('Some message')
+            ->setDismissible(true, 'some-key');
+
+        $this->assertEmpty($notice->render(), 'The previously-dismissed notice should not have been rendered.');
+    }
+
+    /**
+     * @test
+     */
     public function render_should_include_data_attributes_for_dismissal_if_an_ID_was_provided()
     {
         $notice = (new AdminNotice('Some message'))
@@ -305,6 +357,46 @@ class AdminNoticeTest extends WP_UnitTestCase
             'data-id'    => 'some-id',
             'data-nonce' => wp_create_nonce(AdminNotice::NONCE_DISMISS_NOTICE),
         ], $notice->render());
+    }
+
+    /**
+     * @test
+     */
+    public function render_should_enqueue_the_appropriate_script_when_rendering_a_dismissible_notice_with_a_key()
+    {
+        AdminNotice::factory('Some message')
+            ->setDismissible(true, 'some-key')
+            ->render();
+
+        do_action('admin_enqueue_scripts');
+        $this->assertTrue(wp_script_is(AdminNotice::SCRIPT_HANDLE, 'enqueued'));
+    }
+
+    /**
+     * @test
+     */
+    public function render_should_not_enqueue_scripts_when_rendering_a_dismissible_notice_without_a_key()
+    {
+        AdminNotice::factory('Some message')
+            ->setDismissible(true, null)
+            ->render();
+
+        do_action('admin_enqueue_scripts');
+        $this->assertFalse(wp_script_is(AdminNotice::SCRIPT_HANDLE, 'enqueued'));
+    }
+
+    /**
+     * @test
+     */
+    public function render_should_not_enqueue_scripts_when_rendering_a_non_dismissible_notice()
+    {
+        $notice = AdminNotice::factory('Some message')
+            ->setDismissible(false);
+
+        $notice->render();
+
+        do_action('admin_enqueue_scripts');
+        $this->assertFalse(wp_script_is(AdminNotice::SCRIPT_HANDLE, 'enqueued'));
     }
 
     /**

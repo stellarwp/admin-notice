@@ -70,9 +70,19 @@ class AdminNotice
     protected $type = self::TYPE_INFO;
 
     /**
+     * The Ajax action for dismissals.
+     */
+    const ACTION_DISMISSAL = 'stellarwp-dismiss-notice';
+
+    /**
      * The nonce action name used for notice dismissal.
      */
     const NONCE_DISMISS_NOTICE = 'stellarwp-admin-notice-dismiss';
+
+    /**
+     * The handle used when registering JavaScript for handling dismissals.
+     */
+    const SCRIPT_HANDLE = 'stellarwp-admin-notice';
 
     /**
      * Red color scheme, typically used to indicate a failed operation or other issue.
@@ -98,6 +108,11 @@ class AdminNotice
      * The user meta key that holds the IDs and Unix timestamps of dismissed notices.
      */
     const USER_META_KEY = '_stellarwp_dismissed_notices';
+
+    /**
+     * The version of this library.
+     */
+    const VERSION = '1.0.0';
 
     /**
      * Construct a new AdminNotice.
@@ -212,19 +227,7 @@ class AdminNotice
             return $this;
         }
 
-        if (null === $user) {
-            $user = get_current_user_id();
-        }
-
-        $current = get_user_meta($user, self::USER_META_KEY, true);
-
-        if (! is_array($current)) {
-            $current = [];
-        }
-
-        update_user_meta($user, self::USER_META_KEY, array_merge($current, [
-            $this->dismissibleKey => time(),
-        ]));
+        static::dismissNoticeForUser($this->dismissibleKey, $user);
 
         return $this;
     }
@@ -295,6 +298,8 @@ class AdminNotice
                     $this->dismissibleKey,
                     wp_create_nonce(static::NONCE_DISMISS_NOTICE),
                 );
+
+                static::enqueueScript();
             }
         }
 
@@ -407,6 +412,57 @@ class AdminNotice
         ];
 
         return in_array($type, $valid, true) ? $type : self::TYPE_INFO;
+    }
+
+    /**
+     * Mark an individual notice as dismissed for the given user ID.
+     *
+     * @param string $notice The admin notice's dismissible key.
+     * @param ?int   $user Optional. The user ID. Default is null (the current user).
+     *
+     * @return bool True if the user meta was updated, false otherwise.
+     */
+    public static function dismissNoticeForUser($notice, $user = null)
+    {
+        if (null === $user) {
+            $user = get_current_user_id();
+        }
+
+        if (! $user) {
+            return false;
+        }
+
+        $current = get_user_meta($user, self::USER_META_KEY, true);
+
+        if (! is_array($current)) {
+            $current = [];
+        }
+
+        return (bool) update_user_meta($user, self::USER_META_KEY, array_merge($current, [
+            $notice => time(),
+        ]));
+    }
+
+    /**
+     * Enqueue the JavaScript necessary for remembering dismissals.
+     *
+     * @return void
+     */
+    public static function enqueueScript()
+    {
+        // If we're not yet to admin_enqueue_scripts, queue this to re-run later.
+        if (! did_action('admin_enqueue_scripts')) {
+            add_action('admin_enqueue_scripts', __METHOD__);
+            return;
+        }
+
+        wp_enqueue_script(
+            self::SCRIPT_HANDLE,
+            plugins_url('assets/admin-notice.js', __DIR__),
+            [],
+            self::VERSION,
+            true
+        );
     }
 
     /**
