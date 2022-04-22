@@ -28,6 +28,7 @@
         "php": "^5.6 | ^7.0 | ^8.0"
     },
     "require-dev": {
+        "assertwell/shellcheck": "^1.0",
         "assertwell/wp-core-test-framework": "^0.2.0",
         "php-stubs/wordpress-tests-stubs": "^5.8",
         "stellarwp/coding-standards": "dev-develop",
@@ -50,6 +51,12 @@
         "test:coverage": [
             "phpdbg -qrr -d memory_limit=-1 ./vendor/bin/phpunit --coverage-html=tests/coverage --colors=always"
         ],
+        "test:preflight": [
+            "sh bin/preflight.sh"
+        ],
+        "test:shellcheck": [
+            "shellcheck bin/*"
+        ],
         "test:standards": [
             "phpcs --cache",
             "php-cs-fixer fix --config=vendor/stellarwp/coding-standards/src/php-cs-fixer.php -v --diff --dry-run"
@@ -62,6 +69,8 @@
         "test:all": "Run all automated tests.",
         "test:analysis": "Perform static code analysis.",
         "test:coverage": "Generate code coverage reports.",
+        "test:preflight": "Run pre-flight checks while preparing a release.",
+        "test:shellcheck": "Run the bin/ directory through Shellcheck.",
         "test:standards": "Check coding standards.",
         "test:unit": "Run all of the PHPUnit test suites."
     },

@@ -107,3 +107,24 @@ jobs:
 
       - name: Run PHPStan
         run: composer test:analysis
+
+  # Shellcheck
+  shellcheck:
+    name: Shellcheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Run checks
+        run: composer test:shellcheck
+
+  # Pre-flight checks
+  pre-flight:
+    name: Pre-flight checks
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' && startsWith(github.event.pull_request.head.ref, 'release/')
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Run checks
+        run: composer test:pre-flight
