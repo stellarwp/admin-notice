@@ -1,0 +1,49 @@
+# This workflow automatically creates a draft release with the same title and body as the release PR
+# as soon as that PR is merged into `main`.
+name: Release
+
+# Only execute when a release branch has been merged into "main".
+on:
+  pull_request:
+    types:
+      - closed
+    branches:
+      - main
+
+jobs:
+
+  # Automatically prepare a draft release following a successful merge into `main`.
+  prepare-release:
+    if: github.event.pull_request.merged == true
+    name: Prepare release
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Determine the release version
+        id: parse-version
+        env:
+          # This looks scary, but it's a PCRE regular expression that parses the version number
+          # from a branch name based on semver.
+          #
+          # Reference and examples of matched patterns: https://regexr.com/6jfqu
+          pattern: '(?:^|\/)v?\.?\K(\d+\.\d+\.\d+(-[0-9A-Za-z-]+(?:\.\d+)?)?(\+(?:\.?[0-9A-Za-z-]+)+)?)$'
+        run: |
+          version=$(grep -oP "${{ env.pattern }}" <<< "${{ github.event.pull_request.head.ref }}")
+          echo "::set-output name=version::$version"
+          echo "Parsed version: '${version}'"
+
+      - name: Publish the draft release
+        id: publish
+        uses: ncipollo/release-action@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          tag: "v${{ steps.parse-version.outputs.version }}"
+          name: ${{ github.event.pull_request.title }}
+          body: ${{ github.event.pull_request.body }}
+          draft: true
+
+      - name: Release details
+        run: |
+          echo "Draft release has been published: ${{ steps.publish.outputs.html_url }}"
