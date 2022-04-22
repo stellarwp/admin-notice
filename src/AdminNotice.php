@@ -112,7 +112,7 @@ class AdminNotice
     /**
      * The version of this library.
      */
-    const VERSION = '1.0.0';
+    const VERSION = '0.1.0';
 
     /**
      * Construct a new AdminNotice.
