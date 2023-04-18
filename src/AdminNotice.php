@@ -46,7 +46,7 @@ class AdminNotice
      *
      * @var ?string
      */
-    protected $dismissibleKey;
+    public $dismissibleKey;
 
     /**
      * Whether or not this notice should be rendered inline.
@@ -54,6 +54,13 @@ class AdminNotice
      * @var bool
      */
     protected $inline = false;
+
+    /**
+     * Whether or not this notice is persistence, used for backwards compatability with NXMU
+     *
+     * @var bool
+     */
+    protected $persistence = false;
 
     /**
      * The body of the admin notice.
@@ -68,6 +75,11 @@ class AdminNotice
      * @var self::TYPE_*
      */
     protected $type = self::TYPE_INFO;
+
+    /**
+     * Transient that holds persisted notices.
+     */
+    const PERSISTENT_NOTICES_CACHE_KEY = 'persistent_admin_notices';
 
     /**
      * The Ajax action for dismissals.
@@ -117,15 +129,24 @@ class AdminNotice
     /**
      * Construct a new AdminNotice.
      *
-     * @param string       $message The body of the message. This may contain HTML, but plain text will
-     *                              automatically be wrapped in paragraph tags.
-     * @param self::TYPE_* $type    Optional. The type of notice, one of "success", "error", "warning",
-     *                              or "info". Default is "info".
+     * @param string       $message     The body of the message. This may contain HTML, but plain text will
+     *                                  automatically be wrapped in paragraph tags.
+     * @param self::TYPE_* $type        Optional. The type of notice, one of "success", "error", "warning",
+     *                                  or "info". Default is "info".
+     *
+     * Migrated from NXMU for backwards compatability reasons.
+     *
+     * @param bool   $dismissible       Optional. Whether the notice should be marked as
+     *                                  dismissible. Default is true.
+     * @param string $dismissibleKey    Optional. A unique ID for the notification, which is used for
+     *                                  tracking dismissed notifications. Default is a hash of $message.
      */
-    public function __construct($message, $type = self::TYPE_INFO)
+    public function __construct($message, $type = self::TYPE_INFO,  $dismissible = false, $dismissibleKey = '',)
     {
-        $this->message = $message;
-        $this->type    = $this->validateType($type);
+        $this->message        = $message;
+        $this->type           = $this->validateType($type);
+        $this->dismissible    = $dismissible;
+        $this->dismissibleKey = $dismissibleKey;
     }
 
     /**
@@ -196,7 +217,7 @@ class AdminNotice
      */
     public function dismissedByUserAt($user = null)
     {
-        if (! $this->dismissibleKey) {
+        if (empty($this->dismissibleKey)) {
             return null;
         }
 
@@ -465,5 +486,151 @@ class AdminNotice
     {
         // @phpstan-ignore-next-line As we're explicitly forwarding all method parameters.
         return new static(...func_get_args());
+    }
+
+    /////////////////////////////////////
+    // Migrated from Nexccus MU Plugin //
+    /////////////////////////////////////
+
+    /**
+     * Set the value of $save_dismissal.
+     *
+     * @param bool $save Whether or not to save the dismissal in the user's meta.
+     *
+     * @return self
+     */
+    public function setSaveDismissal( $save ) {
+        $this->save_dismissal = $save;
+
+        return $this;
+    }
+
+    /**
+     * Retrieve any persistent admin notices.
+     *
+     * @return array<AdminNotice>
+     */
+    public static function getPersistentNotices() {
+        return array_filter( (array) get_transient( self::PERSISTENT_NOTICES_CACHE_KEY ) ?: [], function ( $notice ) {
+            return $notice instanceof self;
+        } );
+    }
+
+    /**
+     * Add a notice to the list of dismissed notices for a user if it has not already been dismissed.
+     *
+     * @param int    $user_id   The ID of the WordPress user to check.
+     * @param string $notice_id The ID of the notice to check for dismissal.
+     *
+     * @return int|bool The new meta key ID, true on successful update, false on failure.
+     */
+    public static function dismissNotice( $user_id, $notice_id ) {
+//        self::dismissNoticeForUser($notice_id. $user_id);
+        if ( self::noticeWasDismissed( $user_id, $notice_id ) ) {
+            return true;
+        }
+
+        // Track the dismissed notices in user meta.
+        $dismissed = get_user_meta( $user_id, self::USER_META_KEY, true ) ?: [];
+
+        // Add the new notice.
+        $dismissed[ $notice_id ] = time();
+
+        return update_user_meta( $user_id, self::USER_META_KEY, $dismissed );
+    }
+
+    /**
+     * Determine whether or not a particular notice should be shown based on the notice ID and the user's previously-
+     * dismissed notices.
+     *
+     * @param int    $user_id   The ID of the WordPress user to check.
+     * @param string $notice_id The ID of the notice to check for dismissal.
+     *
+     * @return bool True if the user has dismissed the notice before or false if the user has not dismissed it.
+     */
+    public static function noticeWasDismissed( $user_id, $notice_id ) {
+        $dismissed = (array) get_user_meta( $user_id, self::USER_META_KEY, true ) ?: [];
+
+        return isset( $dismissed[ $notice_id ] );
+    }
+
+    private function setPersistence($ersistence)
+    {
+        $this->persistence = (bool) $ersistence;
+
+        return $this;
+    }
+
+    /**
+     * Persist the notice as a transient.
+     *
+     * This enables a notice to persist across multiple page loads and redirections.
+     *
+     * Note that non-dismissible notices will only be displayed once. If the message should be
+     * shown on multiple page loads, $this->is_dismissible should be true.
+     *
+     * @return self
+     */
+    public function persist() {
+        $this->setPersistence(true);
+
+        $notices = (array) ( get_transient( self::PERSISTENT_NOTICES_CACHE_KEY ) ?: [] );
+        $notices[ $this->dismissibleKey ] = $this;
+        set_transient( self::PERSISTENT_NOTICES_CACHE_KEY, $notices, 0 );
+
+        return $this;
+    }
+
+    /**
+     * Determine whether or not a particular notice should be shown based on the user's previously-
+     * dismissed notices.
+     *
+     * @return bool True if the user has dismissed the notice before or false if the user has
+     *              either not dismissed it or the notice is not dismissible.
+     */
+    public function userHasDismissedNotice() {
+        if ( ! $this->persistence || ! $this->save_dismissal ) {
+            return false;
+        }
+
+        return self::noticeWasDismissed( get_current_user_id(), $this->dismissibleKey );
+    }
+
+    /**
+     * Alias for display for backwards compatability with the MUNX admin notice.
+     */
+    public function output() {
+        $this->display();
+    }
+
+    /**
+     * Remove a persistent notice.
+     *
+     * @return self
+     */
+    public function forget() {
+        if ( $this->persistence ) {
+            $notices = (array) ( get_transient( self::PERSISTENT_NOTICES_CACHE_KEY ) ?: [] );
+            unset( $notices[ $this->dismissibleKey ] );
+
+            // Update the transient, or remove it if it's empty.
+            if ( empty( $notices ) ) {
+                delete_transient( self::PERSISTENT_NOTICES_CACHE_KEY );
+            } else {
+                set_transient( self::PERSISTENT_NOTICES_CACHE_KEY, $notices, 0 );
+            }
+        }
+
+        return $this;
+    }
+
+    /**
+     * Getter to return the value of $persistence
+     *
+     * @return bool
+     */
+    public function isPersistent()
+    {
+        return $this->persistence;
     }
 }
