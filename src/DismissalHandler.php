@@ -21,11 +21,12 @@ class DismissalHandler
             wp_send_json_error('Required fields missing.', 422);
         }
 
-        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+        // @phpstan-ignore-next-line phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
         if (! wp_verify_nonce(wp_unslash($_POST['_wpnonce']), AdminNotice::NONCE_DISMISS_NOTICE)) {
             wp_send_json_error('Nonce validation failed.', 403);
         }
 
+        // @phpstan-ignore-next-line
         AdminNotice::dismissNoticeForUser(sanitize_text_field(wp_unslash($_POST['notice'])), get_current_user_id());
 
         wp_send_json_success();
