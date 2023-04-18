@@ -70,6 +70,13 @@ class AdminNotice
     protected $message;
 
     /**
+     * Added for backwards compatability with NXMU
+     *
+     * @var bool
+     */
+    protected $save_dismissal;
+
+    /**
      * The type of notice, one of "success", "error", "warning", or "info".
      *
      * @var self::TYPE_*
@@ -524,14 +531,13 @@ class AdminNotice
      *
      * @return int|bool The new meta key ID, true on successful update, false on failure.
      */
-    public static function dismissNotice( $user_id, $notice_id ) {
-//        self::dismissNoticeForUser($notice_id. $user_id);
+    public static function dismissNotice( $user_id, $notice_id='' ) {
         if ( self::noticeWasDismissed( $user_id, $notice_id ) ) {
             return true;
         }
 
         // Track the dismissed notices in user meta.
-        $dismissed = get_user_meta( $user_id, self::USER_META_KEY, true ) ?: [];
+        $dismissed = (array) get_user_meta( $user_id, self::USER_META_KEY, true ) ?: [];
 
         // Add the new notice.
         $dismissed[ $notice_id ] = time();
@@ -543,20 +549,27 @@ class AdminNotice
      * Determine whether or not a particular notice should be shown based on the notice ID and the user's previously-
      * dismissed notices.
      *
-     * @param int    $user_id   The ID of the WordPress user to check.
-     * @param string $notice_id The ID of the notice to check for dismissal.
+     * @param int           $user_id    The ID of the WordPress user to check.
+     * @param string|null    $notice_id The ID of the notice to check for dismissal.
      *
      * @return bool True if the user has dismissed the notice before or false if the user has not dismissed it.
      */
-    public static function noticeWasDismissed( $user_id, $notice_id ) {
+    public static function noticeWasDismissed( $user_id, $notice_id='' ) {
         $dismissed = (array) get_user_meta( $user_id, self::USER_META_KEY, true ) ?: [];
 
         return isset( $dismissed[ $notice_id ] );
     }
 
-    private function setPersistence($ersistence)
+    /**
+     * Set the value of $persistence
+     *
+     * @param bool $persistence
+     *
+     * @return $this
+     */
+    private function setPersistence(bool $persistence)
     {
-        $this->persistence = (bool) $ersistence;
+        $this->persistence = (bool) $persistence;
 
         return $this;
     }
@@ -598,6 +611,8 @@ class AdminNotice
 
     /**
      * Alias for display for backwards compatability with the MUNX admin notice.
+     *
+     * @return void
      */
     public function output() {
         $this->display();
