@@ -136,19 +136,19 @@ class AdminNotice
     /**
      * Construct a new AdminNotice.
      *
-     * @param string       $message     The body of the message. This may contain HTML, but plain text will
-     *                                  automatically be wrapped in paragraph tags.
-     * @param self::TYPE_* $type        Optional. The type of notice, one of "success", "error", "warning",
-     *                                  or "info". Default is "info".
+     * @param string       $message         The body of the message. This may contain HTML, but plain text will
+     *                                      automatically be wrapped in paragraph tags.
+     * @param self::TYPE_* $type            Optional. The type of notice, one of "success", "error", "warning",
+     *                                      or "info". Default is "info".
      *
      * Migrated from NXMU for backwards compatability reasons.
      *
-     * @param bool   $dismissible       Optional. Whether the notice should be marked as
-     *                                  dismissible. Default is true.
-     * @param string $dismissibleKey    Optional. A unique ID for the notification, which is used for
-     *                                  tracking dismissed notifications. Default is a hash of $message.
+     * @param bool         $dismissible     Optional. Whether the notice should be marked as
+     *                                      dismissible. Default is true.
+     * @param string       $dismissibleKey  Optional. A unique ID for the notification, which is used for
+     *                                      tracking dismissed notifications. Default is a hash of $message.
      */
-    public function __construct($message, $type = self::TYPE_INFO,  $dismissible = false, $dismissibleKey = '',)
+    public function __construct($message, $type = self::TYPE_INFO, $dismissible = false, $dismissibleKey = '')
     {
         $this->message        = $message;
         $this->type           = $this->validateType($type);
@@ -495,9 +495,9 @@ class AdminNotice
         return new static(...func_get_args());
     }
 
-    /////////////////////////////////////
-    // Migrated from Nexccus MU Plugin //
-    /////////////////////////////////////
+    /**
+     * Migrated from Nexccus MU Plugin
+     */
 
     /**
      * Set the value of $save_dismissal.
@@ -506,7 +506,8 @@ class AdminNotice
      *
      * @return self
      */
-    public function setSaveDismissal( $save ) {
+    public function setSaveDismissal($save)
+    {
         $this->save_dismissal = $save;
 
         return $this;
@@ -517,10 +518,11 @@ class AdminNotice
      *
      * @return array<AdminNotice>
      */
-    public static function getPersistentNotices() {
-        return array_filter( (array) get_transient( self::PERSISTENT_NOTICES_CACHE_KEY ) ?: [], function ( $notice ) {
+    public static function getPersistentNotices()
+    {
+        return array_filter((array) get_transient(self::PERSISTENT_NOTICES_CACHE_KEY) ?: [], function ($notice) {
             return $notice instanceof self;
-        } );
+        });
     }
 
     /**
@@ -531,33 +533,35 @@ class AdminNotice
      *
      * @return int|bool The new meta key ID, true on successful update, false on failure.
      */
-    public static function dismissNotice( $user_id, $notice_id='' ) {
-        if ( self::noticeWasDismissed( $user_id, $notice_id ) ) {
+    public static function dismissNotice($user_id, $notice_id = '')
+    {
+        if (self::noticeWasDismissed($user_id, $notice_id)) {
             return true;
         }
 
         // Track the dismissed notices in user meta.
-        $dismissed = (array) get_user_meta( $user_id, self::USER_META_KEY, true ) ?: [];
+        $dismissed = (array) get_user_meta($user_id, self::USER_META_KEY, true) ?: [];
 
         // Add the new notice.
         $dismissed[ $notice_id ] = time();
 
-        return update_user_meta( $user_id, self::USER_META_KEY, $dismissed );
+        return update_user_meta($user_id, self::USER_META_KEY, $dismissed);
     }
 
     /**
      * Determine whether or not a particular notice should be shown based on the notice ID and the user's previously-
      * dismissed notices.
      *
-     * @param int           $user_id    The ID of the WordPress user to check.
-     * @param string|null    $notice_id The ID of the notice to check for dismissal.
+     * @param int         $user_id    The ID of the WordPress user to check.
+     * @param string|null $notice_id  The ID of the notice to check for dismissal.
      *
      * @return bool True if the user has dismissed the notice before or false if the user has not dismissed it.
      */
-    public static function noticeWasDismissed( $user_id, $notice_id='' ) {
-        $dismissed = (array) get_user_meta( $user_id, self::USER_META_KEY, true ) ?: [];
+    public static function noticeWasDismissed($user_id, $notice_id = '')
+    {
+        $dismissed = (array) get_user_meta($user_id, self::USER_META_KEY, true) ?: [];
 
-        return isset( $dismissed[ $notice_id ] );
+        return isset($dismissed[ $notice_id ]);
     }
 
     /**
@@ -584,12 +588,13 @@ class AdminNotice
      *
      * @return self
      */
-    public function persist() {
+    public function persist()
+    {
         $this->setPersistence(true);
 
-        $notices = (array) ( get_transient( self::PERSISTENT_NOTICES_CACHE_KEY ) ?: [] );
+        $notices = (array) (get_transient(self::PERSISTENT_NOTICES_CACHE_KEY) ?: []);
         $notices[ $this->dismissibleKey ] = $this;
-        set_transient( self::PERSISTENT_NOTICES_CACHE_KEY, $notices, 0 );
+        set_transient(self::PERSISTENT_NOTICES_CACHE_KEY, $notices, 0);
 
         return $this;
     }
@@ -601,12 +606,13 @@ class AdminNotice
      * @return bool True if the user has dismissed the notice before or false if the user has
      *              either not dismissed it or the notice is not dismissible.
      */
-    public function userHasDismissedNotice() {
-        if ( ! $this->persistence || ! $this->save_dismissal ) {
+    public function userHasDismissedNotice()
+    {
+        if (! $this->persistence || ! $this->save_dismissal) {
             return false;
         }
 
-        return self::noticeWasDismissed( get_current_user_id(), $this->dismissibleKey );
+        return self::noticeWasDismissed(get_current_user_id(), $this->dismissibleKey);
     }
 
     /**
@@ -614,7 +620,8 @@ class AdminNotice
      *
      * @return void
      */
-    public function output() {
+    public function output()
+    {
         $this->display();
     }
 
@@ -623,16 +630,17 @@ class AdminNotice
      *
      * @return self
      */
-    public function forget() {
-        if ( $this->persistence ) {
-            $notices = (array) ( get_transient( self::PERSISTENT_NOTICES_CACHE_KEY ) ?: [] );
-            unset( $notices[ $this->dismissibleKey ] );
+    public function forget()
+    {
+        if ($this->persistence) {
+            $notices = (array) (get_transient(self::PERSISTENT_NOTICES_CACHE_KEY) ?: []);
+            unset($notices[ $this->dismissibleKey ]);
 
             // Update the transient, or remove it if it's empty.
-            if ( empty( $notices ) ) {
-                delete_transient( self::PERSISTENT_NOTICES_CACHE_KEY );
+            if (empty($notices)) {
+                delete_transient(self::PERSISTENT_NOTICES_CACHE_KEY);
             } else {
-                set_transient( self::PERSISTENT_NOTICES_CACHE_KEY, $notices, 0 );
+                set_transient(self::PERSISTENT_NOTICES_CACHE_KEY, $notices, 0);
             }
         }
 
