@@ -656,4 +656,48 @@ class AdminNotice
     {
         return $this->persistence;
     }
+
+    /**
+     * Check to see if a notice is delayed and whether or not the delay has expired.
+     *
+     * @return bool Whether or not the notice is delayed.
+     */
+    public function noticeIsDelayed() {
+        // If the notice isn't set as delayed, then it's not delayed.
+        if ( ! $this->delayed ) {
+            return false;
+        }
+
+        // Get the user meta of what notices are currently delayed.
+        $delayed_notices = $this->getDelayedNotices();
+
+        // If the notice is not set as delayed, then it's not delayed, so we want to save it as delayed.
+        if ( empty( $delayed_notices[ $this->id ] ) ) {
+            return $this->setDelayedNotice();
+        }
+
+        // If the notice is delayed, but the delay has expired, then it's not delayed.
+        $delay_ends = $delayed_notices[ $this->id ] + $this->delayed_time;
+
+        return $delay_ends > time();
+    }
+
+    /**
+     * Forget a persistent admin notice by ID.
+     *
+     * @param string $id The notice ID.
+     *
+     * @return bool True if the notice was deleted, false otherwise.
+     */
+    public static function forgetPersistentNotice( $id ) {
+        $notices = get_transient( self::PERSISTENT_NOTICES_CACHE_KEY ) ?: [];
+
+        if ( ! isset( $notices[ $id ] ) ) {
+            return false;
+        }
+
+        unset( $notices[ $id ] );
+
+        return set_transient( self::PERSISTENT_NOTICES_CACHE_KEY, $notices );
+    }
 }
