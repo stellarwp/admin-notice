@@ -212,10 +212,12 @@ class AdminNotice
      */
     public function __set($prop, $value)
     {
-        throw new ImmutableValueException(sprintf(
-            'Properties on %1$s cannot be modified directly. Please use the set*() methods instead.',
-            __CLASS__
-       ));
+        throw new ImmutableValueException(
+            sprintf(
+                'Properties on %1$s cannot be modified directly. Please use the set*() methods instead.',
+                __CLASS__
+            )
+        );
     }
 
     /**
@@ -720,10 +722,12 @@ class AdminNotice
     {
         $notices = get_transient(self::PERSISTENT_NOTICES_CACHE_KEY) ?: [];
 
+        // @phpstan-ignore-next-line
         if (! isset($notices[$id])) {
             return false;
         }
 
+        // @phpstan-ignore-next-line
         unset($notices[$id]);
 
         return set_transient(self::PERSISTENT_NOTICES_CACHE_KEY, $notices);
@@ -754,14 +758,14 @@ class AdminNotice
     /**
      * Get the notice meta data from either user meta or site options.
      *
-     * @return array
+     * @return array<AdminNotice>
      */
     public function getDelayedNotices()
     {
         if ('user' === $this->delayed_type) {
-            $notices = get_user_meta( get_current_user_id(), self::DELAYED_NOTICES_KEY, true );
+            $notices = get_user_meta(get_current_user_id(), self::DELAYED_NOTICES_KEY, true);
         } elseif ('site' === $this->delayed_type) {
-            $notices = get_site_option( self::DELAYED_NOTICES_KEY, [] );
+            $notices = get_site_option(self::DELAYED_NOTICES_KEY, []);
         } else {
             $notices = [];
         }
