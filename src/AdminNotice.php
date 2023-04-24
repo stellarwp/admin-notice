@@ -77,6 +77,20 @@ class AdminNotice
     protected $save_dismissal;
 
     /**
+     * The type of delay, either 'user' or 'site'.
+     *
+     * @var string
+     */
+    protected $delayed_type = 'user';
+
+    /**
+     * Amount of time to delay the delayed notice.
+     *
+     * @var int
+     */
+    protected $delayed_time = 0;
+
+    /**
      * The type of notice, one of "success", "error", "warning", or "info".
      *
      * @var self::TYPE_*
@@ -672,12 +686,12 @@ class AdminNotice
         $delayed_notices = $this->getDelayedNotices();
 
         // If the notice is not set as delayed, then it's not delayed, so we want to save it as delayed.
-        if ( empty( $delayed_notices[ $this->id ] ) ) {
+        if ( empty( $delayed_notices[ $this->dismissibleKey ] ) ) {
             return $this->setDelayedNotice();
         }
 
         // If the notice is delayed, but the delay has expired, then it's not delayed.
-        $delay_ends = $delayed_notices[ $this->id ] + $this->delayed_time;
+        $delay_ends = $delayed_notices[ $this->dismissibleKey ] + $this->delayed_time;
 
         return $delay_ends > time();
     }
@@ -699,5 +713,26 @@ class AdminNotice
         unset( $notices[ $id ] );
 
         return set_transient( self::PERSISTENT_NOTICES_CACHE_KEY, $notices );
+    }
+
+    /**
+     * Set the notice meta data.
+     *
+     * @return bool Whether or not the notice meta was set.
+     */
+    public function setDelayedNotice() {
+        $notices = $this->getDelayedNotices();
+
+        $notices[ $this->dismissibleKey ] = time();
+
+        if ( 'user' === $this->delayed_type ) {
+            return (bool) update_user_meta( get_current_user_id(), self::DELAYED_NOTICES_KEY, $notices );
+        }
+
+        if ( 'site' === $this->delayed_type ) {
+            return update_site_option( self::DELAYED_NOTICES_KEY, $notices );
+        }
+
+        return false;
     }
 }
