@@ -143,6 +143,11 @@ class AdminNotice
     const USER_META_KEY = '_stellarwp_dismissed_notices';
 
     /**
+     * Key for delayed notifications, used either as user meta or site option.
+     */
+    const DELAYED_NOTICES_KEY = '_stellarwp_delayed_notices';
+
+    /**
      * The version of this library.
      */
     const VERSION = '0.1.0';
@@ -203,7 +208,7 @@ class AdminNotice
         throw new ImmutableValueException(sprintf(
             'Properties on %1$s cannot be modified directly. Please use the set*() methods instead.',
             __CLASS__
-        ));
+       ));
     }
 
     /**
@@ -339,7 +344,7 @@ class AdminNotice
                     ' data-id="%1$s" data-nonce="%2$s"',
                     $this->dismissibleKey,
                     wp_create_nonce(static::NONCE_DISMISS_NOTICE)
-                );
+               );
 
                 static::enqueueScript();
             }
@@ -350,7 +355,7 @@ class AdminNotice
             esc_attr(implode(' ', $classes)),
             $dataAttributes,
             wpautop($this->message)
-        );
+       );
     }
 
     /**
@@ -490,7 +495,7 @@ class AdminNotice
             [],
             self::VERSION,
             true
-        );
+       );
     }
 
     /**
@@ -676,9 +681,10 @@ class AdminNotice
      *
      * @return bool Whether or not the notice is delayed.
      */
-    public function noticeIsDelayed() {
+    public function noticeIsDelayed()
+    {
         // If the notice isn't set as delayed, then it's not delayed.
-        if ( ! $this->delayed ) {
+        if (!$this->delayed) {
             return false;
         }
 
@@ -686,7 +692,7 @@ class AdminNotice
         $delayed_notices = $this->getDelayedNotices();
 
         // If the notice is not set as delayed, then it's not delayed, so we want to save it as delayed.
-        if ( empty( $delayed_notices[ $this->dismissibleKey ] ) ) {
+        if (empty($delayed_notices[ $this->dismissibleKey ])) {
             return $this->setDelayedNotice();
         }
 
@@ -703,16 +709,17 @@ class AdminNotice
      *
      * @return bool True if the notice was deleted, false otherwise.
      */
-    public static function forgetPersistentNotice( $id ) {
-        $notices = get_transient( self::PERSISTENT_NOTICES_CACHE_KEY ) ?: [];
+    public static function forgetPersistentNotice($id)
+    {
+        $notices = get_transient(self::PERSISTENT_NOTICES_CACHE_KEY) ?: [];
 
-        if ( ! isset( $notices[ $id ] ) ) {
+        if (! isset($notices[$id])) {
             return false;
         }
 
-        unset( $notices[ $id ] );
+        unset($notices[$id]);
 
-        return set_transient( self::PERSISTENT_NOTICES_CACHE_KEY, $notices );
+        return set_transient(self::PERSISTENT_NOTICES_CACHE_KEY, $notices);
     }
 
     /**
@@ -720,17 +727,18 @@ class AdminNotice
      *
      * @return bool Whether or not the notice meta was set.
      */
-    public function setDelayedNotice() {
+    public function setDelayedNotice()
+    {
         $notices = $this->getDelayedNotices();
 
-        $notices[ $this->dismissibleKey ] = time();
+        $notices[$this->dismissibleKey] = time();
 
-        if ( 'user' === $this->delayed_type ) {
-            return (bool) update_user_meta( get_current_user_id(), self::DELAYED_NOTICES_KEY, $notices );
+        if ('user' === $this->delayed_type) {
+            return (bool) update_user_meta(get_current_user_id(), self::DELAYED_NOTICES_KEY, $notices);
         }
 
-        if ( 'site' === $this->delayed_type ) {
-            return update_site_option( self::DELAYED_NOTICES_KEY, $notices );
+        if ('site' === $this->delayed_type) {
+            return update_site_option(self::DELAYED_NOTICES_KEY, $notices);
         }
 
         return false;
