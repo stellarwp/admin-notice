@@ -77,6 +77,27 @@ class AdminNotice
     protected $save_dismissal;
 
     /**
+     * Whether or not this notice should be delayed.
+     *
+     * @var bool
+     */
+    protected $delayed = false;
+
+    /**
+     * The type of delay, either 'user' or 'site'.
+     *
+     * @var string
+     */
+    protected $delayed_type = 'user';
+
+    /**
+     * Amount of time to delay the delayed notice.
+     *
+     * @var int
+     */
+    protected $delayed_time = 0;
+
+    /**
      * The type of notice, one of "success", "error", "warning", or "info".
      *
      * @var self::TYPE_*
@@ -127,6 +148,11 @@ class AdminNotice
      * The user meta key that holds the IDs and Unix timestamps of dismissed notices.
      */
     const USER_META_KEY = '_stellarwp_dismissed_notices';
+
+    /**
+     * Key for delayed notifications, used either as user meta or site option.
+     */
+    const DELAYED_NOTICES_KEY = '_stellarwp_delayed_notices';
 
     /**
      * The version of this library.
@@ -186,10 +212,12 @@ class AdminNotice
      */
     public function __set($prop, $value)
     {
-        throw new ImmutableValueException(sprintf(
-            'Properties on %1$s cannot be modified directly. Please use the set*() methods instead.',
-            __CLASS__
-        ));
+        throw new ImmutableValueException(
+            sprintf(
+                'Properties on %1$s cannot be modified directly. Please use the set*() methods instead.',
+                __CLASS__
+            )
+        );
     }
 
     /**
@@ -655,5 +683,94 @@ class AdminNotice
     public function isPersistent()
     {
         return $this->persistence;
+    }
+
+    /**
+     * Check to see if a notice is delayed and whether or not the delay has expired.
+     *
+     * @return bool Whether or not the notice is delayed.
+     */
+    public function noticeIsDelayed()
+    {
+        // If the notice isn't set as delayed, then it's not delayed.
+        if (! $this->delayed) {
+            return false;
+        }
+
+        // Get the user meta of what notices are currently delayed.
+        $delayed_notices = $this->getDelayedNotices();
+
+        // If the notice is not set as delayed, then it's not delayed, so we want to save it as delayed.
+        if (empty($delayed_notices[ $this->dismissibleKey ])) {
+            return $this->setDelayedNotice();
+        }
+
+        // If the notice is delayed, but the delay has expired, then it's not delayed.
+        $delay_ends = (int) $delayed_notices[ $this->dismissibleKey ] + $this->delayed_time;
+
+        return $delay_ends > time();
+    }
+
+    /**
+     * Forget a persistent admin notice by ID.
+     *
+     * @param string $id The notice ID.
+     *
+     * @return bool True if the notice was deleted, false otherwise.
+     */
+    public static function forgetPersistentNotice($id)
+    {
+        $notices = get_transient(self::PERSISTENT_NOTICES_CACHE_KEY) ?: [];
+
+        // @phpstan-ignore-next-line
+        if (! isset($notices[$id])) {
+            return false;
+        }
+
+        // @phpstan-ignore-next-line
+        unset($notices[$id]);
+
+        return set_transient(self::PERSISTENT_NOTICES_CACHE_KEY, $notices);
+    }
+
+    /**
+     * Set the notice meta data.
+     *
+     * @return bool Whether or not the notice meta was set.
+     */
+    public function setDelayedNotice()
+    {
+        $notices = $this->getDelayedNotices();
+
+        $notices[$this->dismissibleKey] = time();
+
+        if ('user' === $this->delayed_type) {
+            return (bool) update_user_meta(get_current_user_id(), self::DELAYED_NOTICES_KEY, $notices);
+        }
+
+        if ('site' === $this->delayed_type) {
+            return update_site_option(self::DELAYED_NOTICES_KEY, $notices);
+        }
+
+        return false;
+    }
+
+    /**
+     * Get the notice meta data from either user meta or site options.
+     *
+     * @phpstan-ignore-next-line
+     * @return array
+     */
+    public function getDelayedNotices()
+    {
+        if ('user' === $this->delayed_type) {
+            $notices = get_user_meta(get_current_user_id(), self::DELAYED_NOTICES_KEY, true);
+        } elseif ('site' === $this->delayed_type) {
+            $notices = get_site_option(self::DELAYED_NOTICES_KEY, []);
+        } else {
+            $notices = [];
+        }
+
+        return (array) $notices;
     }
 }
