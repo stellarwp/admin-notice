@@ -693,7 +693,7 @@ class AdminNotice
     public function noticeIsDelayed()
     {
         // If the notice isn't set as delayed, then it's not delayed.
-        if (!$this->delayed) {
+        if (! $this->delayed) {
             return false;
         }
 
