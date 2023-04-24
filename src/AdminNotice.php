@@ -77,6 +77,13 @@ class AdminNotice
     protected $save_dismissal;
 
     /**
+     * Whether or not this notice should be delayed.
+     *
+     * @var bool
+     */
+    protected $delayed = false;
+
+    /**
      * The type of delay, either 'user' or 'site'.
      *
      * @var string
@@ -344,7 +351,7 @@ class AdminNotice
                     ' data-id="%1$s" data-nonce="%2$s"',
                     $this->dismissibleKey,
                     wp_create_nonce(static::NONCE_DISMISS_NOTICE)
-               );
+                );
 
                 static::enqueueScript();
             }
@@ -355,7 +362,7 @@ class AdminNotice
             esc_attr(implode(' ', $classes)),
             $dataAttributes,
             wpautop($this->message)
-       );
+        );
     }
 
     /**
@@ -495,7 +502,7 @@ class AdminNotice
             [],
             self::VERSION,
             true
-       );
+        );
     }
 
     /**
@@ -742,5 +749,23 @@ class AdminNotice
         }
 
         return false;
+    }
+
+    /**
+     * Get the notice meta data from either user meta or site options.
+     *
+     * @return array
+     */
+    public function getDelayedNotices()
+    {
+        if ('user' === $this->delayed_type) {
+            $notices = get_user_meta( get_current_user_id(), self::DELAYED_NOTICES_KEY, true );
+        } elseif ('site' === $this->delayed_type) {
+            $notices = get_site_option( self::DELAYED_NOTICES_KEY, [] );
+        } else {
+            $notices = [];
+        }
+
+        return (array) $notices;
     }
 }
