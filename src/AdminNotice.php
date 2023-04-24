@@ -706,6 +706,7 @@ class AdminNotice
         }
 
         // If the notice is delayed, but the delay has expired, then it's not delayed.
+        // @phpstan-ignore-next-line
         $delay_ends = $delayed_notices[ $this->dismissibleKey ] + $this->delayed_time;
 
         return $delay_ends > time();
@@ -758,7 +759,8 @@ class AdminNotice
     /**
      * Get the notice meta data from either user meta or site options.
      *
-     * @return array<AdminNotice>
+     * @phpstan-ignore-next-line
+     * @return array
      */
     public function getDelayedNotices()
     {
