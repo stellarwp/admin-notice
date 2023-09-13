@@ -179,7 +179,12 @@ class AdminNotice
         $this->message        = $message;
         $this->type           = $this->validateType($type);
         $this->dismissible    = $dismissible;
-        $this->dismissibleKey = $dismissibleKey;
+
+        if (empty($dismissibleKey)) {
+            $this->dismissibleKey = mb_substr(md5($type . ':' . $message), 0, 10);
+        } else {
+            $this->dismissibleKey = $dismissibleKey;
+        }
     }
 
     /**
